@@ -34,17 +34,17 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                sh 'docker build -t ${IMAGE_NAME} .'
+                sh "docker build -t ${IMAGE_NAME} ."
             }
         }
 
         stage('Docker Run') {
             steps {
-                sh '''
+                sh """
                     docker stop ${APP_NAME} || true
                     docker rm ${APP_NAME} || true
                     docker run -d --name ${APP_NAME} -p 8080:8080 ${IMAGE_NAME}
-                '''
+                """
             }
         }
 
