@@ -18,6 +18,11 @@ public class PaymentController {
         this.paymentService = paymentService;
     }
 
+    @GetMapping("/")
+    public String showWelcomePage() {
+        return "forward:/index.html";
+    }
+
     @GetMapping("/payment")
     public String showPaymentForm(Model model) {
         model.addAttribute("paymentRequest", new PaymentRequest());
