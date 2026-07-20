@@ -1,28 +1,23 @@
 services:
   # Spring Boot application
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8080:8080"
 
-  # SonarQube Server
-  sonarqube:
-    image: sonarqube:community
-    ports:
-      - "9000:9000"
-    environment:
-      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
-
-  # Jenkins Server (with Docker socket mounted so it can run Docker commands)
+  # Jenkins Server (custom image with Docker CLI pre-installed)
   jenkins:
-    image: jenkins/jenkins:lts
+    build:
+      context: .
+      dockerfile: Dockerfile.jenkins
     ports:
       - "8082:8080"
       - "50000:50000"
     volumes:
       - jenkins_data:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
-    user: root
 
 volumes:
   jenkins_data:

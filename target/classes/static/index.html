@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Pay - One-Page Checkout</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            --error: #f43f5e;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s ease-in-out;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        input {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 12px;
+            color: var(--text-main);
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
+        }
+
+        .error-msg {
+            color: var(--error);
+            font-size: 0.75rem;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .btn-pay {
+            width: 100%;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 14px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn-pay:hover {
+            background: var(--primary-hover);
+        }
+
+        .sandbox-tip {
+            margin-top: 20px;
+            padding: 10px;
+            background: rgba(99, 102, 241, 0.08);
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            border-left: 3px solid var(--primary);
+        }
+
+        /* Result States */
+        .result-view {
+            display: none;
+            text-align: center;
+            animation: fadeIn 0.5s ease-in-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .status-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+
+        .success-style {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 2px solid var(--success);
+        }
+
+        .error-style {
+            background: rgba(244, 63, 94, 0.1);
+            color: var(--error);
+            border: 2px solid var(--error);
+        }
+
+        .receipt-details {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+            font-size: 0.9rem;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            text-align: left;
+        }
+
+        .receipt-row {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .receipt-label {
+            color: var(--text-muted);
+        }
+
+        .receipt-value {
+            font-weight: 500;
+        }
+
+        .btn-back {
+            display: inline-block;
+            text-align: center;
+            width: 100%;
+            background: var(--primary);
+            color: #fff;
+            text-decoration: none;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .btn-back:hover {
+            background: var(--primary-hover);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Form View -->
+        <div id="formView">
+            <h2>Secure Checkout</h2>
+            <p>Fill out the payment details below.</p>
+
+            <form id="paymentForm" onsubmit="handleFormSubmit(event)">
+                <div class="form-group">
+                    <label for="name">Cardholder Name</label>
+                    <input type="text" id="name" placeholder="John Doe">
+                    <div class="error-msg" id="nameError">Name is required.</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="cardNumber">Card Number</label>
+                    <input type="text" id="cardNumber" placeholder="4000 1234 5678 9010">
+                    <div class="error-msg" id="cardError">Card number must start with 4.</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="amount">Amount ($)</label>
+                    <input type="number" step="0.01" id="amount" placeholder="0.00">
+                    <div class="error-msg" id="amountError">Minimum amount is $1.00.</div>
+                </div>
+
+                <button type="submit" class="btn-pay">Pay Now</button>
+            </form>
+
+            <div class="sandbox-tip">
+                💡 <strong>Hint:</strong> Card number must start with <strong>4</strong> to simulate Success.
+            </div>
+        </div>
+
+        <!-- Result View -->
+        <div id="resultView" class="result-view">
+            <div class="status-icon" id="statusIcon">✓</div>
+            <h2 id="resultHeading">Success</h2>
+            <p id="resultMsg">Payment successfully processed!</p>
+
+            <div class="receipt-details">
+                <div class="receipt-row" id="txnRow">
+                    <span class="receipt-label">Transaction ID:</span>
+                    <span class="receipt-value" id="dispTxn">TXN-123456</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Cardholder:</span>
+                    <span class="receipt-value" id="dispName">John Doe</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Amount Paid:</span>
+                    <span class="receipt-value" id="dispAmount">$0.00</span>
+                </div>
+            </div>
+
+            <button onclick="resetForm()" class="btn-back">Process Another Payment</button>
+        </div>
+    </div>
+
+    <script>
+        function handleFormSubmit(event) {
+            event.preventDefault();
+
+            // Inputs
+            const name = document.getElementById('name').value.trim();
+            const card = document.getElementById('cardNumber').value.trim();
+            const amount = parseFloat(document.getElementById('amount').value);
+
+            // Error displays
+            const nameErr = document.getElementById('nameError');
+            const cardErr = document.getElementById('cardError');
+            const amtErr = document.getElementById('amountError');
+
+            let hasError = false;
+
+            // Simple client validations
+            if (!name) {
+                nameErr.style.display = 'block';
+                hasError = true;
+            } else {
+                nameErr.style.display = 'none';
+            }
+
+            if (!card) {
+                cardErr.innerText = "Card number is required.";
+                cardErr.style.display = 'block';
+                hasError = true;
+            } else {
+                cardErr.style.display = 'none';
+            }
+
+            if (isNaN(amount) || amount < 1.0) {
+                amtErr.style.display = 'block';
+                hasError = true;
+            } else {
+                amtErr.style.display = 'none';
+            }
+
+            if (hasError) return;
+
+            // Simulation logic
+            const isSuccess = card.startsWith('4');
+            const txnId = "TXN-" + Math.random().toString(36).substring(2, 10).toUpperCase();
+
+            // Populate display values
+            document.getElementById('dispName').innerText = name;
+            document.getElementById('dispAmount').innerText = '$' + amount.toFixed(2);
+
+            const icon = document.getElementById('statusIcon');
+            const heading = document.getElementById('resultHeading');
+            const msg = document.getElementById('resultMsg');
+            const txnRow = document.getElementById('txnRow');
+
+            if (isSuccess) {
+                icon.className = "status-icon success-style";
+                icon.innerText = "✓";
+                heading.innerText = "Payment Successful";
+                msg.innerText = "Your payment has been successfully processed.";
+                document.getElementById('dispAmount').style.color = "var(--success)";
+                document.getElementById('dispTxn').innerText = txnId;
+                txnRow.style.display = "flex";
+            } else {
+                icon.className = "status-icon error-style";
+                icon.innerText = "✗";
+                heading.innerText = "Payment Failed";
+                msg.innerText = "Payment failed: Card blocked or unsupported.";
+                document.getElementById('dispAmount').style.color = "var(--error)";
+                txnRow.style.display = "none";
+            }
+
+            // Slide out form, slide in result
+            document.getElementById('formView').style.display = 'none';
+            document.getElementById('resultView').style.display = 'block';
+        }
+
+        function resetForm() {
+            document.getElementById('paymentForm').reset();
+            document.getElementById('resultView').style.display = 'none';
+            document.getElementById('formView').style.display = 'block';
+        }
+    </script>
+</body>
+</html>

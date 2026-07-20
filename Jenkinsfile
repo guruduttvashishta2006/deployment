@@ -10,11 +10,14 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/guruduttvashishta2006/deployment.git'
+                // Clean workspace first to avoid corrupted git directory errors
+                cleanWs()
+                git branch: 'main',
+                    url: 'https://github.com/guruduttvashishta2006/deployment.git'
             }
         }
 
-        stage('Build & Test (JaCoCo)') {
+        stage('Build & Test') {
             agent {
                 docker {
                     image 'maven:3.9.6-eclipse-temurin-17-alpine'
@@ -28,24 +31,6 @@ pipeline {
                 always {
                     junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
                 }
-            }
-        }
-
-        stage('SonarQube Analysis') {
-            agent {
-                docker {
-                    image 'maven:3.9.6-eclipse-temurin-17-alpine'
-                    reuseNode true
-                }
-            }
-            steps {
-                sh '''
-                    mvn sonar:sonar \
-                    -Dsonar.projectKey=payment-action \
-                    -Dsonar.host.url=http://sonarqube:9000 \
-                    -Dsonar.login=admin \
-                    -Dsonar.password=admin
-                '''
             }
         }
 
