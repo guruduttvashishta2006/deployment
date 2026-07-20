@@ -43,6 +43,8 @@ pipeline {
                 sh """
                     docker stop ${APP_NAME} || true
                     docker rm ${APP_NAME} || true
+                    docker stop deployment-app-1 || true
+                    docker rm deployment-app-1 || true
                     docker run -d --name ${APP_NAME} -p 8080:8080 ${IMAGE_NAME}
                 """
             }
