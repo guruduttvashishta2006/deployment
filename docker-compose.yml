@@ -4,7 +4,7 @@ services:
     build: .
     ports:
       - "8080:8080"
-  
+
   # SonarQube Server
   sonarqube:
     image: sonarqube:community
@@ -13,7 +13,7 @@ services:
     environment:
       - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
 
-  # Jenkins Server
+  # Jenkins Server (with Docker socket mounted so it can run Docker commands)
   jenkins:
     image: jenkins/jenkins:lts
     ports:
@@ -21,6 +21,8 @@ services:
       - "50000:50000"
     volumes:
       - jenkins_data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    user: root
 
 volumes:
   jenkins_data:

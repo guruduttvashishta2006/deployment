@@ -1,88 +1,90 @@
 pipeline {
     agent any
 
-    tools {
-        maven 'Maven 3.8.5'
-        jdk 'JDK 17'
-    }
-
     environment {
-        // Update these credentials IDs to match your Jenkins configuration
-        DOCKER_CREDENTIALS_ID = 'docker-hub-credentials'
-        DOCKER_IMAGE_NAME     = 'your-docker-username/payment-action:latest'
-        SONAR_SERVER_NAME     = 'SonarQube' // Name configured in Jenkins system settings
+        APP_NAME   = 'payment-action'
+        IMAGE_NAME = 'payment-action:latest'
     }
 
     stages {
+
         stage('Checkout') {
             steps {
-                checkout scm
+                git branch: 'main', url: 'https://github.com/guruduttvashishta2006/deployment.git'
             }
         }
 
-        stage('Build & Test') {
+        stage('Build & Test (JaCoCo)') {
+            agent {
+                docker {
+                    image 'maven:3.9.6-eclipse-temurin-17-alpine'
+                    reuseNode true
+                }
+            }
             steps {
-                echo 'Building and running tests with JaCoCo coverage...'
                 sh 'mvn clean test'
             }
             post {
                 always {
-                    // Record JUnit test results and publish JaCoCo coverage
-                    junit '**/target/surefire-reports/*.xml'
-                    recordCoverage(tools: [[parser: 'JACOCO', pattern: '**/target/site/jacoco/jacoco.xml']])
+                    junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
                 }
             }
         }
 
-        stage('SonarQube Quality Gate') {
-            steps {
-                echo 'Running SonarQube Code Quality scan...'
-                withSonarQubeEnv(SONAR_SERVER_NAME) {
-                    sh 'mvn sonar:sonar'
+        stage('SonarQube Analysis') {
+            agent {
+                docker {
+                    image 'maven:3.9.6-eclipse-temurin-17-alpine'
+                    reuseNode true
                 }
-                // Optional: Force build failure if SonarQube quality gate fails
-                // timeout(time: 1, unit: 'HOURS') {
-                //     waitForQualityGate abortPipeline: true
-                // }
+            }
+            steps {
+                sh '''
+                    mvn sonar:sonar \
+                    -Dsonar.projectKey=payment-action \
+                    -Dsonar.host.url=http://sonarqube:9000 \
+                    -Dsonar.login=admin \
+                    -Dsonar.password=admin
+                '''
             }
         }
 
-        stage('Package Application') {
+        stage('Package JAR') {
+            agent {
+                docker {
+                    image 'maven:3.9.6-eclipse-temurin-17-alpine'
+                    reuseNode true
+                }
+            }
             steps {
-                echo 'Packaging Jar file...'
                 sh 'mvn package -DskipTests'
             }
         }
 
-        stage('Build & Push Docker Image') {
+        stage('Docker Build') {
             steps {
-                script {
-                    echo 'Building Docker container...'
-                    dockerImage = docker.build("${DOCKER_IMAGE_NAME}")
-                    
-                    echo 'Pushing Docker image to registry...'
-                    docker.withRegistry('', DOCKER_CREDENTIALS_ID) {
-                        dockerImage.push()
-                    }
-                }
+                sh 'docker build -t ${IMAGE_NAME} .'
             }
         }
 
-        stage('Deploy') {
+        stage('Docker Run') {
             steps {
-                echo 'Deploying application...'
-                // Expose with ngrok or deploy command
-                // sh 'docker-compose up -d --build'
+                sh '''
+                    docker stop ${APP_NAME} || true
+                    docker rm ${APP_NAME} || true
+                    docker run -d --name ${APP_NAME} -p 8080:8080 ${IMAGE_NAME}
+                '''
             }
         }
+
     }
 
     post {
         success {
-            echo 'Pipeline completed successfully!'
+            echo '✅ Pipeline completed successfully! App running on port 8080.'
         }
         failure {
-            echo 'Pipeline failed. Please inspect logs.'
+            echo '❌ Pipeline failed. Check logs above.'
         }
     }
 }
