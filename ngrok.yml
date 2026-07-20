@@ -1,0 +1,6 @@
+version: "2"
+authtoken: YOUR_NGROK_AUTHTOKEN_HERE
+tunnels:
+  payment-app:
+    proto: http
+    addr: 8080
