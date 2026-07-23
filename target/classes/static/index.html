@@ -83,7 +83,7 @@
             color: var(--text-main);
             font-size: 0.95rem;
             outline: none;
-            transition: all 0.3s;
+            transition: all 0.2s;
         }
 
         input:focus {
@@ -91,11 +91,36 @@
             box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
         }
 
+        /* Invalid state */
+        input.invalid {
+            border-color: var(--error);
+        }
+
+        input.invalid:focus {
+            border-color: var(--error);
+            box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.25);
+        }
+
+        /* Valid state (subtle positive affirmation once corrected) */
+        input.valid {
+            border-color: var(--success);
+        }
+
         .error-msg {
             color: var(--error);
             font-size: 0.75rem;
             margin-top: 4px;
-            display: none;
+            min-height: 0;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .error-msg.show {
+            max-height: 40px;
+            opacity: 1;
+            margin-top: 4px;
         }
 
         .btn-pay {
@@ -215,30 +240,30 @@
             <h2>Secure Checkout</h2>
             <p>Fill out the payment details below.</p>
 
-            <form id="paymentForm" onsubmit="handleFormSubmit(event)">
+            <form id="paymentForm" novalidate onsubmit="handleFormSubmit(event)">
                 <div class="form-group">
                     <label for="name">Cardholder Name</label>
-                    <input type="text" id="name" placeholder="John Doe">
+                    <input type="text" id="name" placeholder="John Doe" autocomplete="name">
                     <div class="error-msg" id="nameError">Name is required.</div>
                 </div>
 
                 <div class="form-group">
                     <label for="cardNumber">Card Number</label>
-                    <input type="text" id="cardNumber" placeholder="4000 1234 5678 9010">
-                    <div class="error-msg" id="cardError">Card number must start with 4.</div>
+                    <input type="text" id="cardNumber" placeholder="4000 1234 5678 9010" inputmode="numeric" autocomplete="cc-number" maxlength="19">
+                    <div class="error-msg" id="cardError">Card number is required.</div>
                 </div>
 
                 <div class="form-group">
                     <label for="amount">Amount ($)</label>
-                    <input type="number" step="0.01" id="amount" placeholder="0.00">
-                    <div class="error-msg" id="amountError">Minimum amount is $1.00.</div>
+                    <input type="number" step="0.01" id="amount" placeholder="0.00" inputmode="decimal">
+                    <div class="error-msg" id="amountError">Amount is required.</div>
                 </div>
 
                 <button type="submit" class="btn-pay">Pay Now</button>
             </form>
 
             <div class="sandbox-tip">
-                💡 <strong>Hint:</strong> Card number must start with <strong>4</strong> to simulate Success.
+                💡 <strong>Hint:</strong> Card number must start with <strong>4</strong> and contain 13–19 digits to simulate Success.
             </div>
         </div>
 
@@ -268,48 +293,110 @@
     </div>
 
     <script>
+        // ---- Field elements ----
+        const nameInput = document.getElementById('name');
+        const cardInput = document.getElementById('cardNumber');
+        const amountInput = document.getElementById('amount');
+
+        const nameErr = document.getElementById('nameError');
+        const cardErr = document.getElementById('cardError');
+        const amtErr = document.getElementById('amountError');
+
+        // ---- Validation helpers ----
+        // Returns null when valid, or an error message string when invalid.
+        function validateName(value) {
+            const trimmed = value.trim();
+            if (!trimmed) return 'Name is required.';
+            if (trimmed.length < 2) return 'Name must be at least 2 characters.';
+            if (!/^[a-zA-Z\s.'-]+$/.test(trimmed)) return 'Name can only contain letters, spaces, and - . \'';
+            return null;
+        }
+
+        function validateCard(value) {
+            const trimmed = value.trim();
+            if (!trimmed) return 'Card number is required.';
+            const digitsOnly = trimmed.replace(/\s+/g, '');
+            if (!/^\d+$/.test(digitsOnly)) return 'Card number can only contain digits and spaces.';
+            if (digitsOnly.length < 13 || digitsOnly.length > 19) return 'Card number must be 13–19 digits.';
+            if (!digitsOnly.startsWith('4')) return 'Unsupported card. Number must start with 4.';
+            return null;
+        }
+
+        function validateAmount(rawValue) {
+            if (rawValue === '' || rawValue === null) return 'Amount is required.';
+            const amount = parseFloat(rawValue);
+            if (isNaN(amount)) return 'Enter a valid number.';
+            if (amount < 1.0) return 'Minimum amount is $1.00.';
+            if (amount > 1000000) return 'Amount is too large.';
+            return null;
+        }
+
+        // ---- Apply / clear error UI for a single field ----
+        function setFieldState(input, errorEl, message) {
+            if (message) {
+                errorEl.innerText = message;
+                errorEl.classList.add('show');
+                input.classList.add('invalid');
+                input.classList.remove('valid');
+                input.setAttribute('aria-invalid', 'true');
+            } else {
+                errorEl.classList.remove('show');
+                input.classList.remove('invalid');
+                if (input.value.trim() !== '') {
+                    input.classList.add('valid');
+                } else {
+                    input.classList.remove('valid');
+                }
+                input.setAttribute('aria-invalid', 'false');
+            }
+        }
+
+        // ---- Live validation wiring ----
+        // Validate as the user types (so errors clear the moment they're fixed)
+        // and also on blur (so leaving a field empty shows an error right away).
+        nameInput.addEventListener('input', () => setFieldState(nameInput, nameErr, validateName(nameInput.value)));
+        nameInput.addEventListener('blur', () => setFieldState(nameInput, nameErr, validateName(nameInput.value)));
+
+        cardInput.addEventListener('input', () => setFieldState(cardInput, cardErr, validateCard(cardInput.value)));
+        cardInput.addEventListener('blur', () => setFieldState(cardInput, cardErr, validateCard(cardInput.value)));
+
+        amountInput.addEventListener('input', () => setFieldState(amountInput, amtErr, validateAmount(amountInput.value)));
+        amountInput.addEventListener('blur', () => setFieldState(amountInput, amtErr, validateAmount(amountInput.value)));
+
+        // ---- Submit handling ----
         function handleFormSubmit(event) {
             event.preventDefault();
 
-            // Inputs
-            const name = document.getElementById('name').value.trim();
-            const card = document.getElementById('cardNumber').value.trim();
-            const amount = parseFloat(document.getElementById('amount').value);
+            const nameValue = nameInput.value;
+            const cardValue = cardInput.value;
+            const amountValue = amountInput.value;
 
-            // Error displays
-            const nameErr = document.getElementById('nameError');
-            const cardErr = document.getElementById('cardError');
-            const amtErr = document.getElementById('amountError');
+            const nameMsg = validateName(nameValue);
+            const cardMsg = validateCard(cardValue);
+            const amtMsg = validateAmount(amountValue);
 
-            let hasError = false;
+            setFieldState(nameInput, nameErr, nameMsg);
+            setFieldState(cardInput, cardErr, cardMsg);
+            setFieldState(amountInput, amtErr, amtMsg);
 
-            // Simple client validations
-            if (!name) {
-                nameErr.style.display = 'block';
-                hasError = true;
-            } else {
-                nameErr.style.display = 'none';
+            if (nameMsg || cardMsg || amtMsg) {
+                // Focus the first invalid field for accessibility / usability
+                const firstInvalid = [
+                    [nameMsg, nameInput],
+                    [cardMsg, cardInput],
+                    [amtMsg, amountInput]
+                ].find(([msg]) => msg);
+                if (firstInvalid) firstInvalid[1].focus();
+                return;
             }
 
-            if (!card) {
-                cardErr.innerText = "Card number is required.";
-                cardErr.style.display = 'block';
-                hasError = true;
-            } else {
-                cardErr.style.display = 'none';
-            }
-
-            if (isNaN(amount) || amount < 1.0) {
-                amtErr.style.display = 'block';
-                hasError = true;
-            } else {
-                amtErr.style.display = 'none';
-            }
-
-            if (hasError) return;
+            const name = nameValue.trim();
+            const card = cardValue.trim();
+            const amount = parseFloat(amountValue);
 
             // Simulation logic
-            const isSuccess = card.startsWith('4');
+            const digitsOnly = card.replace(/\s+/g, '');
+            const isSuccess = digitsOnly.startsWith('4');
             const txnId = "TXN-" + Math.random().toString(36).substring(2, 10).toUpperCase();
 
             // Populate display values
@@ -347,6 +434,10 @@
             document.getElementById('paymentForm').reset();
             document.getElementById('resultView').style.display = 'none';
             document.getElementById('formView').style.display = 'block';
+
+            // Clear all validation states
+            [nameInput, cardInput, amountInput].forEach(input => input.classList.remove('invalid', 'valid'));
+            [nameErr, cardErr, amtErr].forEach(errEl => errEl.classList.remove('show'));
         }
     </script>
 </body>
