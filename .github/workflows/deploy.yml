@@ -25,7 +25,7 @@ jobs:
         distribution: 'temurin'
         cache: maven
 
-    - name: Build and Test with Maven (JaCoCo)
+    - name: Build and Test with Maven
       run: mvn clean test
 
     - name: Cache Maven packages
@@ -35,11 +35,6 @@ jobs:
         key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
         restore-keys: ${{ runner.os }}-m2
 
-    - name: Upload JaCoCo Coverage Report
-      uses: actions/upload-artifact@v4
-      with:
-        name: jacoco-report
-        path: target/site/jacoco/
 
 
   deploy-to-aws:
